@@ -10,6 +10,7 @@ import requests
 import re
 from auth import phone, pin
 import os
+import telegram
 
 
 class GracefulKiller:
@@ -50,12 +51,19 @@ def check_photo_from(bot, update):
     base = 'https://proverkacheka.nalog.ru:9999'
     logging.info(update)
     file_id = update.message.photo[-1]
-    newFile = bot.get_file(file_id)
+    new_file = bot.get_file(file_id)
     file_name = '{}.jpg'.format(file_id['file_id'])
-    newFile.download(file_name)
+    new_file.download(file_name)
     try:
-        f = furl('/?{}'.format(get_qr_data(file_name)[0].decode("utf-8")))
+        f = furl('/?{}'.format(get_qr_data(file_name)[0].data.decode("utf-8")))
+        bot.send_chat_action(chat_id=update.message.chat_id, action=telegram.ChatAction.TYPING)
     except TypeError:
+       update.message.reply_text('Извините, я не могу найти QR-код, попробуйте отправить фото ещё раз')
+       return os.remove(file_name)
+    except IndexError:
+       update.message.reply_text('Извините, я не могу найти QR-код, попробуйте отправить фото ещё раз')
+       return os.remove(file_name)
+    except AttributeError:
        update.message.reply_text('Извините, я не могу найти QR-код, попробуйте отправить фото ещё раз')
        return os.remove(file_name)
 
@@ -79,7 +87,13 @@ def check_photo_from(bot, update):
     ]
     request_receipt = "%s/v1/inns/*/kkts/*/fss/%s/tickets/%s" % (base, fn, fd)
 
-    response = requests.get(request_receipt, headers=headers, params=data_request, auth=(phone, pin)).json()
+    response = requests.get(request_receipt, headers=headers, params=data_request, auth=(phone, pin))
+
+    if response.status_code == 200:
+        response = response.json()
+    else:
+        return update.message.reply_text('База данных не отвечает, повторите попытку чуть позже')
+
     n = 0
     receipt_txt = ''
 
@@ -88,54 +102,41 @@ def check_photo_from(bot, update):
 
     try:
         user = response['document']['receipt']['user']
-        #update.message.reply_text(user)
         receipt_txt += '{}\n'.format(user)
     except KeyError:
         # Key is not present
         pass
     try:
         retail_place_address = response['document']['receipt']['retailPlaceAddress']
-        #update.message.reply_text(retail_place_address)
         receipt_txt += '{}\n'.format(retail_place_address)
     except KeyError:
         # Key is not present
         pass
     try:
         user_inn = response['document']['receipt']['userInn']
-        #update.message.reply_text('ИНН {}\n'.format(user_inn))
         receipt_txt += 'ИНН {}\n'.format(user_inn)
 
     except KeyError:
         # Key is not present
         pass
-    #update.message.reply_text(datetime(*map(int, re.split('[^\d]', response['document']['receipt']['dateTime']))).strftime('%d.%m.%Y %H:%M'))
     receipt_txt += '{}\n'.format(datetime(*map(int, re.split('[^\d]', response['document']['receipt']['dateTime']))).strftime('%d.%m.%Y %H:%M'))
-    #update.message.reply_text('Чек № {}'.format(response['document']['receipt']['requestNumber']))
     receipt_txt += 'Чек № {}\n'.format(response['document']['receipt']['requestNumber'])
     try:
         shift_number = response['document']['receipt']['shiftNumber']
-        #update.message.reply_text('Смена № {}'.format(shift_number))
         receipt_txt += 'Смена № {}\n'.format(shift_number)
     except KeyError:
         # Key is not present
         pass
-    #update.message.reply_text('Кассир {}'.format(response['document']['receipt']['operator']))
     receipt_txt += 'Кассир {}\n'.format(response['document']['receipt']['operator'])
-    #update.message.reply_text('Приход')
     receipt_txt += 'Приход\n'
-    #update.message.reply_text('-------------------------------------------------------------------')
     receipt_txt += '----------------------------\n'
-    #update.message.reply_text('№  Название                              Цена    Кол.    Сумма')
     receipt_txt += '№  Название                              Цена    Кол.    Сумма\n'
     for i in response['document']['receipt']['items']:
         n += 1
         price = i['price'] * 0.01
         sum = i['sum'] * 0.01
-        #update.message.reply_text('{}  {}   {:,.2f}       {}      {:,.2f}'.format(n, i['name'], price, i['quantity'], sum))
         receipt_txt += '{}  {}   {:,.2f}       {}      {:,.2f}\n'.format(n, i['name'], price, i['quantity'], sum)
-    #update.message.reply_text('-------------------------------------------------------------------')
     receipt_txt += '----------------------------\n'
-    #update.message.reply_text('Итого: {:,.2f}'.format(total_sum))
     receipt_txt += 'Итого: {:,.2f}'.format(total_sum)
     update.message.reply_text(receipt_txt)
     os.remove(file_name)
