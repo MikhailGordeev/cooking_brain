@@ -1,0 +1,17 @@
+certifi==2018.1.18
+chardet==3.0.4
+clang==5.0
+Django==2.0.3
+furl==1.0.1
+idna==2.6
+numpy==1.14.2
+orderedmultidict==0.7.11
+Pillow==5.0.0
+pypng==0.0.18
+PyQRCode==1.2.1
+pytz==2018.3
+requests==2.18.4
+six==1.11.0
+urllib3==1.22
+zbar-py==1.0.4
+zbarlight==2.0
