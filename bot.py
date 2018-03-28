@@ -55,7 +55,8 @@ def check_photo_from(bot, update):
     file_name = '{}.jpg'.format(file_id['file_id'])
     new_file.download(file_name)
     try:
-        f = furl('/?{}'.format(get_qr_data(file_name)[0].data.decode("utf-8")))
+        decode_result = get_qr_data(file_name)[0].data.decode("utf-8")
+        f = furl('/?{}'.format(decode_result))
         bot.send_chat_action(chat_id=update.message.chat_id, action=telegram.ChatAction.TYPING)
     except TypeError:
        update.message.reply_text('Извините, я не могу найти QR-код, попробуйте отправить фото ещё раз')
@@ -67,12 +68,17 @@ def check_photo_from(bot, update):
        update.message.reply_text('Извините, я не могу найти QR-код, попробуйте отправить фото ещё раз')
        return os.remove(file_name)
 
-    # Fiscal storage (Номер фискального накопителя - ФН)
-    fn = f.args['fn']
+    try:
+        # Fiscal storage (Номер фискального накопителя - ФН)
+        fn = f.args['fn']
+        fd = f.args['i']
+        # Fiscal sign (Подпись фискального документа - ФП)
+        fp = f.args['fp']
+    except KeyError:
+        update.message.reply_text('Извините, не нешел нужной информации для получения чека, распознанный текст: {}'.format(decode_result))
+        return os.remove(file_name)
     # Fiscal document number (Номер фискального документа - ФД)
-    fd = f.args['i']
-    # Fiscal sign (Подпись фискального документа - ФП)
-    fp = f.args['fp']
+
     headers = {
         'Device-Id': dev_id,
         'Device-OS': dev_os,
@@ -92,7 +98,11 @@ def check_photo_from(bot, update):
     if response.status_code == 200:
         response = response.json()
     else:
-        return update.message.reply_text('База данных не отвечает, повторите попытку чуть позже')
+        response = requests.get(request_receipt, headers=headers, params=data_request, auth=(phone, pin))
+        if response.status_code == 200:
+            response = response.json()
+        else:
+            return update.message.reply_text('База данных не отвечает, повторите попытку чуть позже.')
 
     n = 0
     receipt_txt = ''
