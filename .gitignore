@@ -6,3 +6,4 @@ env
 *.sqlite3
 auth.py
 bot_vars.py
+.DS_Store
