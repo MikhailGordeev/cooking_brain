@@ -1,16 +1,22 @@
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
-import bot_vars
 import logging
 import signal
 from datetime import datetime
 from qrscanner import get_qr_data
-import uuid
+from request_receipt import request_to_nalog
 from furl import furl
-import requests
 import re
-from auth import phone, pin
-import os
+from bot_vars import BOT_API_TOKEN, BOT_NAME
 import telegram
+import sys
+import os
+import django
+sys.path.append('cooking_brain_web')
+os.environ['DJANGO_SETTINGS_MODULE'] = 'cooking_brain_web.settings'
+django.setup()
+
+from receipt.models import ReceiptCash
+
 
 
 class GracefulKiller:
@@ -38,17 +44,6 @@ def greet_user(bot, update):
 
 
 def check_photo_from(bot, update):
-    dev_id = str(uuid.uuid4()).replace('-', '')
-    # DeviceID
-    dev_os = 'Adnroid 4.4.4'
-    # Protocol version
-    proto = '2'
-    # Client version
-    client = '1.4.1.3'
-    # User agent
-    uagent = 'okhttp/3.0.1'
-    # Base URL
-    base = 'https://proverkacheka.nalog.ru:9999'
     logging.info(update)
     file_id = update.message.photo[-1]
     new_file = bot.get_file(file_id)
@@ -71,42 +66,24 @@ def check_photo_from(bot, update):
     try:
         # Fiscal storage (Номер фискального накопителя - ФН)
         fn = f.args['fn']
+        # Fiscal document number (Номер фискального документа - ФД)
         fd = f.args['i']
         # Fiscal sign (Подпись фискального документа - ФП)
         fp = f.args['fp']
     except KeyError:
         update.message.reply_text('Извините, не нешел нужной информации для получения чека, распознанный текст: {}'.format(decode_result))
         return os.remove(file_name)
-    # Fiscal document number (Номер фискального документа - ФД)
 
-    headers = {
-        'Device-Id': dev_id,
-        'Device-OS': dev_os,
-        'Version': proto,
-        'ClientVersion': client,
-        'User-Agent': uagent
-    }
-
-    data_request = [
-        ('fiscalSign', fp),
-        ('sendToEmail', 'no'),
-    ]
-    request_receipt = "%s/v1/inns/*/kkts/*/fss/%s/tickets/%s" % (base, fn, fd)
-
-    response = requests.get(request_receipt, headers=headers, params=data_request, auth=(phone, pin))
-
-    if response.status_code == 200:
-        response = response.json()
+    check_receipt_in_db = ReceiptCash.objects.filter(fn=fn, fd=fd, fp=fp)
+    if check_receipt_in_db.count() > 0:
+        response = check_receipt_in_db[0].receipt_raw
     else:
-        response = requests.get(request_receipt, headers=headers, params=data_request, auth=(phone, pin))
-        if response.status_code == 200:
-            response = response.json()
-        else:
-            return update.message.reply_text('База данных не отвечает, повторите попытку чуть позже.')
+        response = request_to_nalog(fp, fd, fn, update)
+        rc = ReceiptCash(fn=fn, fd=fd, fp=fp, receipt_raw=response)
+        rc.save()
 
     n = 0
     receipt_txt = ''
-
 
     total_sum = response['document']['receipt']['totalSum'] * 0.01
 
@@ -153,8 +130,8 @@ def check_photo_from(bot, update):
 
 
 def main():
-    print("Bot receipt_helper_bot is running")
-    updater = Updater(bot_vars.BOT_API_TOKEN)
+    print("Bot {} is running".format(BOT_NAME))
+    updater = Updater(BOT_API_TOKEN)
     dp = updater.dispatcher
     dp.add_handler(CommandHandler("start", greet_user))
     dp.add_handler(MessageHandler(Filters.photo, check_photo_from))

@@ -37,7 +37,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'reciepe'
+    'receipt'
 ]
 
 MIDDLEWARE = [
@@ -77,6 +77,9 @@ WSGI_APPLICATION = 'cooking_brain_web.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql_psycopg2',
+        'OPTIONS': {
+                'options': '-c search_path=django'
+            },
         'NAME': 'django_db',
         'USER': 'cooking_brain_db',
         'PASSWORD': 'password',
