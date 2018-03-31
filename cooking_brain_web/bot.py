@@ -8,11 +8,17 @@ from furl import furl
 import requests
 import re
 from auth import phone, pin
-import bot_vars
-import os
+from bot_vars import BOT_API_TOKEN, BOT_NAME
 import telegram
-from django.core.management import settings
-from cooking_brain_web.cooking_brain_web import settings as project_settings
+import sys
+import os
+import django
+sys.path.append('cooking_brain_web')
+os.environ['DJANGO_SETTINGS_MODULE'] = 'cooking_brain_web.settings'
+django.setup()
+
+from reciepe.models import ReceiptCash
+
 
 
 class GracefulKiller:
@@ -109,6 +115,9 @@ def check_photo_from(bot, update):
         else:
             return update.message.reply_text('База данных не отвечает, повторите попытку чуть позже.')
 
+    rc = ReceiptCash(fn=fn, fd=fd, fp=fp, receipt_raw=response)
+    rc.save()
+
     n = 0
     receipt_txt = ''
 
@@ -158,8 +167,8 @@ def check_photo_from(bot, update):
 
 
 def main():
-    print("Bot receipt_helper_bot is running")
-    updater = Updater(bot_vars.BOT_API_TOKEN)
+    print("Bot {} is running".format(BOT_NAME))
+    updater = Updater(BOT_API_TOKEN)
     dp = updater.dispatcher
     dp.add_handler(CommandHandler("start", greet_user))
     dp.add_handler(MessageHandler(Filters.photo, check_photo_from))
