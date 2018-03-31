@@ -1,5 +1,4 @@
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
-import bot_vars
 import logging
 import signal
 from datetime import datetime
@@ -9,8 +8,11 @@ from furl import furl
 import requests
 import re
 from auth import phone, pin
+import bot_vars
 import os
 import telegram
+from django.core.management import settings
+from cooking_brain_web.cooking_brain_web import settings as project_settings
 
 
 class GracefulKiller:
@@ -71,13 +73,14 @@ def check_photo_from(bot, update):
     try:
         # Fiscal storage (Номер фискального накопителя - ФН)
         fn = f.args['fn']
+        # Fiscal document number (Номер фискального документа - ФД)
         fd = f.args['i']
         # Fiscal sign (Подпись фискального документа - ФП)
         fp = f.args['fp']
     except KeyError:
         update.message.reply_text('Извините, не нешел нужной информации для получения чека, распознанный текст: {}'.format(decode_result))
         return os.remove(file_name)
-    # Fiscal document number (Номер фискального документа - ФД)
+
 
     headers = {
         'Device-Id': dev_id,
@@ -101,6 +104,8 @@ def check_photo_from(bot, update):
         response = requests.get(request_receipt, headers=headers, params=data_request, auth=(phone, pin))
         if response.status_code == 200:
             response = response.json()
+        elif response.status_code == 406:
+            return update.message.reply_text('Чек ещё не поступил в базу данных, повторите попытку чуть позже.')
         else:
             return update.message.reply_text('База данных не отвечает, повторите попытку чуть позже.')
 
