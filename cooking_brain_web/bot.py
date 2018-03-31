@@ -17,7 +17,7 @@ sys.path.append('cooking_brain_web')
 os.environ['DJANGO_SETTINGS_MODULE'] = 'cooking_brain_web.settings'
 django.setup()
 
-from reciepe.models import ReceiptCash
+from reciept.models import ReceiptCash
 
 
 
@@ -86,6 +86,10 @@ def check_photo_from(bot, update):
     except KeyError:
         update.message.reply_text('Извините, не нешел нужной информации для получения чека, распознанный текст: {}'.format(decode_result))
         return os.remove(file_name)
+
+    #TODO: Проверить судествует ли чек в локальной БД
+
+    #TODO: Если чек сеществует, выдать результат из локальной БД
 
 
     headers = {
