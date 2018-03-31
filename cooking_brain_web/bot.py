@@ -3,7 +3,7 @@ import logging
 import signal
 from datetime import datetime
 from qrscanner import get_qr_data
-from request_reciept import request_to_nalog
+from request_receipt import request_to_nalog
 from furl import furl
 import re
 from bot_vars import BOT_API_TOKEN, BOT_NAME
@@ -15,7 +15,7 @@ sys.path.append('cooking_brain_web')
 os.environ['DJANGO_SETTINGS_MODULE'] = 'cooking_brain_web.settings'
 django.setup()
 
-from reciept.models import ReceiptCash
+from receipt.models import ReceiptCash
 
 
 
@@ -74,9 +74,9 @@ def check_photo_from(bot, update):
         update.message.reply_text('Извините, не нешел нужной информации для получения чека, распознанный текст: {}'.format(decode_result))
         return os.remove(file_name)
 
-    check_reciept_in_db = ReceiptCash.objects.filter(fn=fn, fd=fd, fp=fp)
-    if check_reciept_in_db.count() > 0:
-        response = check_reciept_in_db[0].receipt_raw
+    check_receipt_in_db = ReceiptCash.objects.filter(fn=fn, fd=fd, fp=fp)
+    if check_receipt_in_db.count() > 0:
+        response = check_receipt_in_db[0].receipt_raw
     else:
         response = request_to_nalog(fp, fd, fn, update)
         rc = ReceiptCash(fn=fn, fd=fd, fp=fp, receipt_raw=response)
