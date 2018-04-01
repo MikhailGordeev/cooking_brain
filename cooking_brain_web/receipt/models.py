@@ -14,12 +14,12 @@ class ReceiptCash(models.Model):
 
 class ReceiptRequest(models.Model):
     chat_id = models.IntegerField()
-    user_name = models.CharField()
+    user_name = models.CharField(max_length=64)
     fn = models.BigIntegerField()
     fd = models.BigIntegerField()
     fp = models.BigIntegerField()
 
 class ReceiptBotUsers(models.Model):
     chat_id = models.IntegerField()
-    user_name = models.CharField()
+    user_name = models.CharField(max_length=64)
     connection_date = models.DateTimeField(auto_now_add=True)
