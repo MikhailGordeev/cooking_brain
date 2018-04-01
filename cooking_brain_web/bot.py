@@ -7,15 +7,17 @@ from request_receipt import request_to_nalog
 from furl import furl
 import re
 from bot_vars import BOT_API_TOKEN, BOT_NAME
+from user_logger import log_new_user
 import telegram
 import sys
 import os
 import django
+
 sys.path.append('cooking_brain_web')
 os.environ['DJANGO_SETTINGS_MODULE'] = 'cooking_brain_web.settings'
 django.setup()
 
-from receipt.models import ReceiptCash
+from receipt.models import ReceiptCash, ReceiptRequest
 
 
 
@@ -38,6 +40,8 @@ logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s
 
 def greet_user(bot, update):
     logging.info(update)
+    # Log new user info
+    log_new_user(update)
     text = "Привет, {}! Я умею читать QR-коды с чеков и присылать в ответ чек в текстовом виде. Пришли мне фото QR-кода и получи ответ".format(update.message.from_user.first_name)
     logging.info('Пользователь {} нажал /start'.format(update.message.chat.username))
     update.message.reply_text(text)
@@ -45,6 +49,8 @@ def greet_user(bot, update):
 
 def check_photo_from(bot, update):
     logging.info(update)
+    # Log new user info
+    log_new_user(update)
     file_id = update.message.photo[-1]
     new_file = bot.get_file(file_id)
     file_name = '{}.jpg'.format(file_id['file_id'])
@@ -74,6 +80,15 @@ def check_photo_from(bot, update):
         update.message.reply_text('Извините, не нешел нужной информации для получения чека, распознанный текст: {}'.format(decode_result))
         return os.remove(file_name)
 
+    # Log unique request
+    check_receipt_request = ReceiptRequest.objects.filter(fn=fn, fd=fd, fp=fp, user_name=update.message.chat.username, chat_id=update.message.chat.id)
+    if check_receipt_request.count() > 0:
+        pass
+    else:
+        save_request = ReceiptRequest(fn=fn, fd=fd, fp=fp, user_name=update.message.chat.username, chat_id=update.message.chat.id)
+        save_request.save()
+
+    # If receipt exist in local db, send response from it
     check_receipt_in_db = ReceiptCash.objects.filter(fn=fn, fd=fd, fp=fp)
     if check_receipt_in_db.count() > 0:
         response = check_receipt_in_db[0].receipt_raw
@@ -82,6 +97,7 @@ def check_photo_from(bot, update):
         rc = ReceiptCash(fn=fn, fd=fd, fp=fp, receipt_raw=response)
         rc.save()
 
+    # print receipt
     n = 0
     receipt_txt = ''
 
