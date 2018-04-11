@@ -1,19 +1,14 @@
 import requests
 import bs4
 from time import sleep
-from elasticsearch import Elasticsearch
 from pymongo import MongoClient
 from pymongo.errors import DuplicateKeyError
 
 
 pg = 1
 
-es = Elasticsearch()
-
 client = MongoClient('localhost', 27017)
-
 db = client.recipes
-# collection = db.recipes
 
 
 def get_page(url):
@@ -23,10 +18,10 @@ def get_page(url):
     return r.text
 
 
-r_url = 'https://eda.ru/recepty/zavtraki?page=' + str(pg)
+r_url = 'https://eda.ru/recepty/vypechka-deserty?page=' + str(pg)
 
 while get_page:
-    print('ITER ' + r_url)§
+    print('ITER ' + r_url)
     soup = bs4.BeautifulSoup(get_page(r_url), "html.parser")
     all = soup.findAll("div", {
                        "class": "tile-list__horizontal-tile horizontal-tile js-portions-count-parent js-bookmark__obj"})
@@ -53,11 +48,11 @@ while get_page:
                 ingridient = ((ingridient.text).strip()).split('\n')
                 ingridients += ingridient
 
+            ingridients = [ingr.lower() for ingr in ingridients]
+            tags = [tag.lower() for tag in tags]
+
             print('{} {} {} {} {} {}'.format(recipe_id, title,
                                              data_href, image_href, tags, ingridients))
-
- #           es.index( index='recipes', id=recipe_id, doc_type='recipe', body={ 'recipe_name': title, 'data_href': data_href, \
- #            'image_href': image_href, 'tags': tags, 'ingridients': ingridients })
 
             db.recipes.insert({'_id': recipe_id, 'recipe_name': title, 'data_href': data_href, 'image_href': image_href,
                                'tags': tags, 'ingridients': ingridients})
@@ -69,4 +64,4 @@ while get_page:
 
     pg += 1
 
-    r_url = 'https://eda.ru/recepty/zavtraki?page=' + str(pg)
+    r_url = 'https://eda.ru/recepty/vypechka-deserty?page=' + str(pg)
