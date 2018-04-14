@@ -1,7 +1,7 @@
 from elasticsearch import Elasticsearch
 
 
-def get_recipe(ingridients_norm_list, tags):
+def recipe_elastic_query(ingridients_norm_list, tags):
     es = Elasticsearch()
     result = {'hits': {'total': 0}}
     hits_rate = int(len(ingridients_norm_list))
@@ -38,7 +38,7 @@ def get_recipe(ingridients_norm_list, tags):
     return result['hits']['hits'][0]['_source']
 
 
-def normalize_ingridients(ingridients_raw_list):
+def ingridients_elastic_query(ingridients_raw_list):
     es = Elasticsearch()
     ingridients_norm_list = []
     for ingridient in ingridients_raw_list:
@@ -84,12 +84,30 @@ ingridients_raw_list = [{'ingr_id': 1, 'ingr_name': 'картофельные ч
                         ]
 tags = ["завтраки"]
 
-ingridients_norm_list = normalize_ingridients(ingridients_raw_list)
 
+ingridients_pre_norm_list = ingridients_elastic_query(ingridients_raw_list)
+
+ingridients_norm_list = [ingridients_pre_norm_list[0]]
+for i in ingridients_pre_norm_list:
+    if i['ingr_name'] not in [d['ingr_name'] for d in ingridients_norm_list]:
+        ingridients_norm_list.append(i.copy())
+
+print(ingridients_norm_list)
 ingridients_query_list = [d['ingr_name'] for d in ingridients_norm_list]
-recipe = get_recipe(ingridients_norm_list, tags)
+print(ingridients_query_list)
+recipe = recipe_elastic_query(ingridients_query_list, tags)
 
-print(recipe['ingridients'])
-used_ingridients = \
-    [val for val in ingridients_norm_list if val in recipe['ingridients']]
-print(used_ingridients)
+used_norm_ingr_list = \
+    [val for val in ingridients_norm_list
+        if val['ingr_name'] in recipe['ingridients']]
+needed_ingr_list = \
+    [val for val in recipe['ingridients']
+        if val not in [d['ingr_name'] for d in used_norm_ingr_list]]
+used_ingr_list = \
+    [val for val in ingridients_raw_list
+        if val['ingr_id'] in [d['ingr_id'] for d in used_norm_ingr_list]]
+
+recipe['needed_ingridients'] = needed_ingr_list
+recipe['used_ingridients'] = used_ingr_list
+
+print(recipe)
