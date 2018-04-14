@@ -1,16 +1,16 @@
 from elasticsearch import Elasticsearch
-from elasticsearch.exceptions import NotFoundError
 from pymongo import MongoClient
 
 
 def create_indices():
     es = Elasticsearch()
-    try:
-        es.indices.delete('recipes')
-    except NotFoundError:
-        pass
+    if es.indices.exists('recipes'):
+        print("deleting recipes index...")
+        res = es.indices.delete(index='recipes')
+        print(" response: {}".format(res))
 
-    es.indices.create(
+    print("creating recipes index...")
+    res = es.indices.create(
         index='recipes',
         body={
             "mappings": {
@@ -24,13 +24,15 @@ def create_indices():
             }
         }
     )
+    print(" response: {}".format(res))
 
-    try:
-        es.indices.delete('ingridients')
-    except NotFoundError:
-        pass
+    if es.indices.exists('ingridients'):
+        print("deleting ingridients index...")
+        res = es.indices.delete(index='ingridients')
+        print(" response: {}".format(res))
 
-    es.indices.create(
+    print("creating ingridients index...")
+    res = es.indices.create(
         index='ingridients',
         body={
             "settings": {
@@ -43,24 +45,30 @@ def create_indices():
                     "tokenizer": {
                         "ngram_tokenizer": {
                             "type": "nGram",
-                            "min_gram": "3",
-                            "max_gram": "8"
+                            "min_gram": "5",
+                            "max_gram": "5"
                         }
                     }
                 }
             },
             "mappings": {
-                "ingridient": {
+                "i": {
                     "properties": {
                         "ingridient": {
                             "type": "text",
-                            "analyzer": "ngram_analyzer"
+                            "fields": {
+                                "ngram": {
+                                    "type": "text",
+                                    "analyzer": "ngram_analyzer"
+                                }
+                            }
                         }
                     }
                 }
             }
         }
     )
+    print(" response: {}".format(res))
 
 
 def insert_recipes():
@@ -112,7 +120,7 @@ def insert_ingridients():
     for aggr in res['aggregations']['ingridients']['buckets']:
         es.index(
             index='ingridients',
-            doc_type='ingridient',
+            doc_type='i',
             body={
                 'ingridient': aggr['key']
             }
