@@ -56,6 +56,7 @@ def create_indices():
                     "properties": {
                         "ingridient": {
                             "type": "text",
+                            "analyzer": "standard",
                             "fields": {
                                 "ngram": {
                                     "type": "text",
@@ -76,6 +77,7 @@ def insert_recipes():
     client = MongoClient('localhost', 27017)
     db = client.recipes
 
+    print("migrating data from mongodb to elastic...")
     cursor = db.recipes.find()
     for line in cursor:
         recipe_id = line['_id']
@@ -101,6 +103,7 @@ def insert_recipes():
 
 def insert_ingridients():
     es = Elasticsearch()
+    print("agggregating ingridients...")
     res = es.search(
         index='recipes',
         body={
@@ -117,6 +120,7 @@ def insert_ingridients():
         }
     )
 
+    print("fill ingridients index...")
     for aggr in res['aggregations']['ingridients']['buckets']:
         es.index(
             index='ingridients',
@@ -125,6 +129,7 @@ def insert_ingridients():
                 'ingridient': aggr['key']
             }
         )
+    print("Done.")
 
 
 if __name__ == "__main__":

@@ -18,7 +18,7 @@ def get_page(url):
     return r.text
 
 
-r_url = 'https://eda.ru/recepty/vypechka-deserty?page=' + str(pg)
+r_url = 'https://eda.ru/recepty/sousy-marinady?page=' + str(pg)
 
 while get_page:
     print('ITER ' + r_url)
@@ -64,4 +64,4 @@ while get_page:
 
     pg += 1
 
-    r_url = 'https://eda.ru/recepty/vypechka-deserty?page=' + str(pg)
+    r_url = 'https://eda.ru/recepty/sousy-marinady?page=' + str(pg)

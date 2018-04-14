@@ -3,10 +3,10 @@ from elasticsearch import Elasticsearch
 
 def recipe_elastic_query(ingridients_norm_list, tags):
     es = Elasticsearch()
-    result = {'hits': {'total': 0}}
+    pre_result = {'hits': {'total': 0}}
     hits_rate = int(len(ingridients_norm_list))
-    while hits_rate > 0 and result['hits']['total'] == 0:
-        result = es.search(
+    while hits_rate > 0 and pre_result['hits']['total'] == 0:
+        pre_result = es.search(
             index="recipes",
             body={
                 "size": 1,
@@ -35,7 +35,9 @@ def recipe_elastic_query(ingridients_norm_list, tags):
             }
         )
         hits_rate -= 1
-    return result['hits']['hits'][0]['_source']
+    result = pre_result['hits']['hits'][0]['_source']
+    result['recipe_id'] = pre_result['hits']['hits'][0]['_id']
+    return result
 
 
 def ingridients_elastic_query(ingridients_raw_list):
@@ -113,5 +115,5 @@ if __name__ == "__main__":
         {'ingr_id': 3, 'ingr_name': 'картофелина адидас'},
         {'ingr_id': 4, 'ingr_name': 'какая-то неведомая хрень'}]
 
-    tags = ["завтраки"]
+    tags = ["завтраки", "основные блюда", "супы", "выпечка и десерты", "салаты"]
     print(get_recipe(ingridients, tags))
