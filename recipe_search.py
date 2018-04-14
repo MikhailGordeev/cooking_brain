@@ -77,37 +77,41 @@ def ingridients_elastic_query(ingridients_raw_list):
     return(ingridients_norm_list)
 
 
-ingridients_raw_list = [{'ingr_id': 1, 'ingr_name': 'картофельные чипсы'},
-                        {'ingr_id': 2, 'ingr_name': 'соль экстра'},
-                        {'ingr_id': 3, 'ingr_name': 'картофелина адидас'},
-                        {'ingr_id': 4, 'ingr_name': 'какая-то неведомая хрень'}
-                        ]
-tags = ["завтраки"]
+def get_recipe(ingridients_raw_list, tags):
+    ingridients_pre_norm_list = ingridients_elastic_query(ingridients_raw_list)
+
+    ingridients_norm_list = [ingridients_pre_norm_list[0]]
+    for i in ingridients_pre_norm_list:
+        if i['ingr_name'] not \
+                in [d['ingr_name'] for d in ingridients_norm_list]:
+            ingridients_norm_list.append(i.copy())
+
+    ingridients_query_list = [d['ingr_name'] for d in ingridients_norm_list]
+
+    recipe = recipe_elastic_query(ingridients_query_list, tags)
+
+    used_norm_ingr_list = \
+        [val for val in ingridients_norm_list
+            if val['ingr_name'] in recipe['ingridients']]
+    needed_ingr_list = \
+        [val for val in recipe['ingridients']
+            if val not in [d['ingr_name'] for d in used_norm_ingr_list]]
+    used_ingr_list = \
+        [val for val in ingridients_raw_list
+            if val['ingr_id'] in [d['ingr_id'] for d in used_norm_ingr_list]]
+
+    recipe['needed_ingridients'] = needed_ingr_list
+    recipe['used_ingridients'] = used_ingr_list
+
+    return(recipe)
 
 
-ingridients_pre_norm_list = ingridients_elastic_query(ingridients_raw_list)
+if __name__ == "__main__":
+    ingridients = [
+        {'ingr_id': 1, 'ingr_name': 'картофельные чипсы'},
+        {'ingr_id': 2, 'ingr_name': 'соль экстра'},
+        {'ingr_id': 3, 'ingr_name': 'картофелина адидас'},
+        {'ingr_id': 4, 'ingr_name': 'какая-то неведомая хрень'}]
 
-ingridients_norm_list = [ingridients_pre_norm_list[0]]
-for i in ingridients_pre_norm_list:
-    if i['ingr_name'] not in [d['ingr_name'] for d in ingridients_norm_list]:
-        ingridients_norm_list.append(i.copy())
-
-print(ingridients_norm_list)
-ingridients_query_list = [d['ingr_name'] for d in ingridients_norm_list]
-print(ingridients_query_list)
-recipe = recipe_elastic_query(ingridients_query_list, tags)
-
-used_norm_ingr_list = \
-    [val for val in ingridients_norm_list
-        if val['ingr_name'] in recipe['ingridients']]
-needed_ingr_list = \
-    [val for val in recipe['ingridients']
-        if val not in [d['ingr_name'] for d in used_norm_ingr_list]]
-used_ingr_list = \
-    [val for val in ingridients_raw_list
-        if val['ingr_id'] in [d['ingr_id'] for d in used_norm_ingr_list]]
-
-recipe['needed_ingridients'] = needed_ingr_list
-recipe['used_ingridients'] = used_ingr_list
-
-print(recipe)
+    tags = ["завтраки"]
+    print(get_recipe(ingridients, tags))
