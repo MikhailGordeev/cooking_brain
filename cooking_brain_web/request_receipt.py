@@ -29,7 +29,8 @@ def request_to_nalog(fp, fd, fn, update):
     request_receipt = "%s/v1/inns/*/kkts/*/fss/%s/tickets/%s" % (base, fn, fd)
 
     response = requests.get(request_receipt, headers=headers, params=data_request, auth=(phone, pin))
-
+    # TODO
+    # Переписать в цикл, добавить слип
     if response.status_code == 200:
         return response.json()
     else:
