@@ -10,7 +10,7 @@ opencv-python==3.4.0.12
 orderedmultidict==0.7.11
 pypng==0.0.18
 PyQRCode==1.2.1
-python-telegram-bot==10.0.1
+python-telegram-bot==10.1.0
 pytz==2018.3
 pyzbar==0.1.5
 requests==2.18.4

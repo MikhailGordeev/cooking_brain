@@ -6,7 +6,7 @@ from qrscanner import get_qr_data
 from request_receipt import request_to_nalog
 from furl import furl
 import re
-from bot_vars import BOT_API_TOKEN, BOT_NAME
+from bot_vars import BOT_API_TOKEN, BOT_NAME, BOT_PROXY, BOT_PROXY_USER, BOT_PROXY_PASS
 from user_logger import log_new_user
 import telegram
 import sys
@@ -17,7 +17,7 @@ sys.path.append('cooking_brain_web')
 os.environ['DJANGO_SETTINGS_MODULE'] = 'cooking_brain_web.settings'
 django.setup()
 
-from receipt.models import ReceiptCash, ReceiptRequest
+from receipt.models import ReceiptCash, ReceiptRequest, ReceiptBotUsers
 
 
 
@@ -91,11 +91,16 @@ def check_photo_from(bot, update):
     # If receipt exist in local db, send response from it
     check_receipt_in_db = ReceiptCash.objects.filter(fn=fn, fd=fd, fp=fp)
     if check_receipt_in_db.count() > 0:
-        response = check_receipt_in_db[0].receipt_raw
+        rc = check_receipt_in_db[0]
+        response = rc.receipt_raw
     else:
         response = request_to_nalog(fp, fd, fn, update)
         rc = ReceiptCash(fn=fn, fd=fd, fp=fp, receipt_raw=response)
         rc.save()
+    user = ReceiptBotUsers.objects.get(chat_id=update.message.chat.id)
+    rc.users.add(user)
+    print(user.receiptcash_set.all())
+
 
     # print receipt
     n = 0
@@ -147,13 +152,20 @@ def check_photo_from(bot, update):
 
 def main():
     print("Bot {} is running".format(BOT_NAME))
-    updater = Updater(BOT_API_TOKEN)
+    REQUEST_KWARGS = {
+        'proxy_url': BOT_PROXY,
+        # Optional, if you need authentication:
+        'urllib3_proxy_kwargs': {
+            'username': BOT_PROXY_USER,
+            'password': BOT_PROXY_PASS,
+        }
+    }
+    updater = Updater(BOT_API_TOKEN, request_kwargs=REQUEST_KWARGS)
     dp = updater.dispatcher
     dp.add_handler(CommandHandler("start", greet_user))
     dp.add_handler(MessageHandler(Filters.photo, check_photo_from))
     updater.start_polling()
     updater.idle()
-
 
 if __name__ == "__main__":
     logging.info('Bot started')
