@@ -81,11 +81,15 @@ def check_photo_from(bot, update):
         return os.remove(file_name)
 
     # Log unique request
-    check_receipt_request = ReceiptRequest.objects.filter(fn=fn, fd=fd, fp=fp, user_name=update.message.chat.username, chat_id=update.message.chat.id)
+    if update.message.chat.username is None:
+        user_name = 'empty'
+    else:
+        user_name = update.message.chat.username
+    check_receipt_request = ReceiptRequest.objects.filter(fn=fn, fd=fd, fp=fp, user_name=user_name, chat_id=update.message.chat.id)
     if check_receipt_request.count() > 0:
         pass
     else:
-        save_request = ReceiptRequest(fn=fn, fd=fd, fp=fp, user_name=update.message.chat.username, chat_id=update.message.chat.id)
+        save_request = ReceiptRequest(fn=fn, fd=fd, fp=fp, user_name=user_name, chat_id=update.message.chat.id)
         save_request.save()
 
     # If receipt exist in local db, send response from it
