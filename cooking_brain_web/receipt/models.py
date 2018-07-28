@@ -23,7 +23,7 @@ class ReceiptBotUsers(models.Model):
 
 
 class ReceiptCash(models.Model):
-    users = models.ManyToManyField(ReceiptBotUsers)
+    #users = models.ManyToManyField(ReceiptBotUsers) #future cash model
     fn = models.BigIntegerField()
     fd = models.BigIntegerField()
     fp = models.BigIntegerField()

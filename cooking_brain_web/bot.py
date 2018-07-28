@@ -97,9 +97,10 @@ def check_photo_from(bot, update):
         response = request_to_nalog(fp, fd, fn, update)
         rc = ReceiptCash(fn=fn, fd=fd, fp=fp, receipt_raw=response)
         rc.save()
-    user = ReceiptBotUsers.objects.get(chat_id=update.message.chat.id)
-    rc.users.add(user)
-    print(user.receiptcash_set.all())
+    #future cash model
+    #user = ReceiptBotUsers.objects.get(chat_id=update.message.chat.id)
+    #rc.users.add(user)
+    #print(user.receiptcash_set.all())
 
 
     # print receipt
