@@ -39,5 +39,7 @@ def request_to_nalog(fp, fd, fn, update):
             return response.json()
         elif response.status_code == 406:
             return update.message.reply_text('Чек ещё не поступил в базу данных, повторите попытку чуть позже.')
+        elif response.status_code == 500:
+            return update.message.reply_text('Упс, ваш чек возможно утерян в недрах ФНС')
         else:
             return update.message.reply_text('База данных не отвечает, повторите попытку чуть позже.')
