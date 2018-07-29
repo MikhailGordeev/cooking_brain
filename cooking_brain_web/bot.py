@@ -7,6 +7,7 @@ from request_receipt import request_to_nalog
 from furl import furl
 import re
 from bot_vars import BOT_API_TOKEN, BOT_NAME, BOT_PROXY, BOT_PROXY_USER, BOT_PROXY_PASS
+from bot_answers import ANSWERS
 from user_logger import log_new_user
 import telegram
 import sys
@@ -68,7 +69,6 @@ def check_photo_from(bot, update):
     except AttributeError:
        update.message.reply_text('Извините, я не могу найти QR-код, попробуйте отправить фото ещё раз')
        return os.remove(file_name)
-
     try:
         # Fiscal storage (Номер фискального накопителя - ФН)
         fn = f.args['fn']
@@ -79,6 +79,11 @@ def check_photo_from(bot, update):
     except KeyError:
         update.message.reply_text('Извините, не нешел нужной информации для получения чека, распознанный текст: {}'.format(decode_result))
         return os.remove(file_name)
+    os.remove(file_name)
+    check_requested_text(fn, fd, fp, update)
+
+
+def check_requested_text(fn, fd, fp, update):
 
     # Log unique request
     if update.message.chat.username is None:
@@ -152,7 +157,57 @@ def check_photo_from(bot, update):
     receipt_txt += '----------------------------\n'
     receipt_txt += 'Итого: {:,.2f}'.format(total_sum)
     update.message.reply_text(receipt_txt)
-    os.remove(file_name)
+
+
+def check_message_from(bot, update):
+    logging.info(update)
+    check_text = update.message.text.lower()
+    logging.info(check_text)
+
+    # Если обращаются в ЛС
+    if update.message.chat_id > 0:
+        logging.info("Сообщение в ЛС " + check_text)
+        talk_to_me(check_text, update)
+
+    elif update.message.chat_id < 0:
+
+        # отвечать в группе только если к тебе обращаются
+        if BOT_NAME in check_text:
+            check_text = check_text.split(BOT_NAME, 1)[1].lstrip()
+            logging.info("Сообщение в Группе " + check_text)
+            talk_to_me(check_text, update)
+
+    if BOT_NAME in check_text:
+        check_text = check_text.split(BOT_NAME, 1)[1].lstrip()
+        logging.info("Сообщение в Группе " + check_text)
+        talk_to_me(check_text, update)
+
+
+def talk_to_me(user_text, replay):
+    # Реакция на ключевую фразу сообщением
+    #if user_text in bot_vars.GROUP_MESSAGES:
+    #    logging.info('Пользователь {} получил сообщение {}'.format(replay.message.chat.username, bot_vars.GROUP_MESSAGES[user_text]))
+    #    replay.message.reply_text(bot_vars.GROUP_MESSAGES[user_text])
+    # Если знает ответ, скажет - answer[user_text]
+    f = furl('/?{}'.format(user_text))
+    try:
+        # Fiscal storage (Номер фискального накопителя - ФН)
+        fn = f.args['fn']
+        # Fiscal document number (Номер фискального документа - ФД)
+        fd = f.args['i']
+        # Fiscal sign (Подпись фискального документа - ФП)
+        fp = f.args['fp']
+    except KeyError:
+        replay.message.reply_text('Извините, не нешел нужной информации для получения чека, распознанный текст: {}'.format(user_text))
+    if all(v is not None for v in [fn, fd, fp]):
+        return check_requested_text(fn, fd, fp, replay)
+    elif user_text in ANSWERS:
+        logging.info('Пользователь {} получил ответ {}'.format(replay.message.chat.username, ANSWERS[user_text]))
+        replay.message.reply_text(ANSWERS[user_text])
+    # Если не знает, скажет об этом
+    else:
+        logging.info('Пользователь {} получил ответ не знаю что такое: {}'.format(replay.message.chat.username, user_text))
+        replay.message.reply_text("Не знаю что такое: " + user_text)
 
 
 def main():
@@ -169,6 +224,7 @@ def main():
     dp = updater.dispatcher
     dp.add_handler(CommandHandler("start", greet_user))
     dp.add_handler(MessageHandler(Filters.photo, check_photo_from))
+    dp.add_handler(MessageHandler(Filters.text, check_message_from))
     updater.start_polling()
     updater.idle()
 
