@@ -80,10 +80,10 @@ def check_photo_from(bot, update):
         update.message.reply_text('Извините, не нешел нужной информации для получения чека, распознанный текст: {}'.format(decode_result))
         return os.remove(file_name)
     os.remove(file_name)
-    check_requested_text(fn, fd, fp, update)
+    check_requested_text(fn, fd, fp, update, bot)
 
 
-def check_requested_text(fn, fd, fp, update):
+def check_requested_text(fn, fd, fp, update, bot):
 
     # Log unique request
     if update.message.chat.username is None:
@@ -103,9 +103,13 @@ def check_requested_text(fn, fd, fp, update):
         rc = check_receipt_in_db[0]
         response = rc.receipt_raw
     else:
-        response = request_to_nalog(fp, fd, fn, update)
-        rc = ReceiptCash(fn=fn, fd=fd, fp=fp, receipt_raw=response)
-        rc.save()
+        response = request_to_nalog(fp, fd, fn, update, bot)
+        if response is not None:
+            rc = ReceiptCash(fn=fn, fd=fd, fp=fp, receipt_raw=response)
+            print(response)
+            rc.save()
+        else:
+            return
     #future cash model
     #user = ReceiptBotUsers.objects.get(chat_id=update.message.chat.id)
     #rc.users.add(user)
@@ -167,7 +171,7 @@ def check_message_from(bot, update):
     # Если обращаются в ЛС
     if update.message.chat_id > 0:
         logging.info("Сообщение в ЛС " + check_text)
-        talk_to_me(check_text, update)
+        talk_to_me(check_text, update, bot)
 
     elif update.message.chat_id < 0:
 
@@ -175,39 +179,36 @@ def check_message_from(bot, update):
         if BOT_NAME in check_text:
             check_text = check_text.split(BOT_NAME, 1)[1].lstrip()
             logging.info("Сообщение в Группе " + check_text)
-            talk_to_me(check_text, update)
+            talk_to_me(check_text, update, bot)
 
     if BOT_NAME in check_text:
         check_text = check_text.split(BOT_NAME, 1)[1].lstrip()
         logging.info("Сообщение в Группе " + check_text)
-        talk_to_me(check_text, update)
+        talk_to_me(check_text, update, bot)
 
 
-def talk_to_me(user_text, replay):
+def talk_to_me(user_text, replay, bot):
     # Реакция на ключевую фразу сообщением
     #if user_text in bot_vars.GROUP_MESSAGES:
     #    logging.info('Пользователь {} получил сообщение {}'.format(replay.message.chat.username, bot_vars.GROUP_MESSAGES[user_text]))
     #    replay.message.reply_text(bot_vars.GROUP_MESSAGES[user_text])
     # Если знает ответ, скажет - answer[user_text]
     f = furl('/?{}'.format(user_text))
-    try:
-        # Fiscal storage (Номер фискального накопителя - ФН)
-        fn = f.args['fn']
-        # Fiscal document number (Номер фискального документа - ФД)
-        fd = f.args['i']
-        # Fiscal sign (Подпись фискального документа - ФП)
-        fp = f.args['fp']
-    except KeyError:
-        replay.message.reply_text('Извините, не нешел нужной информации для получения чека, распознанный текст: {}'.format(user_text))
-    if all(v is not None for v in [fn, fd, fp]):
-        return check_requested_text(fn, fd, fp, replay)
-    elif user_text in ANSWERS:
+    if user_text in ANSWERS:
         logging.info('Пользователь {} получил ответ {}'.format(replay.message.chat.username, ANSWERS[user_text]))
         replay.message.reply_text(ANSWERS[user_text])
-    # Если не знает, скажет об этом
     else:
-        logging.info('Пользователь {} получил ответ не знаю что такое: {}'.format(replay.message.chat.username, user_text))
-        replay.message.reply_text("Не знаю что такое: " + user_text)
+        try:
+            # Fiscal storage (Номер фискального накопителя - ФН)
+            fn = f.args['fn']
+            # Fiscal document number (Номер фискального документа - ФД)
+            fd = f.args['i']
+            # Fiscal sign (Подпись фискального документа - ФП)
+            fp = f.args['fp']
+        except KeyError:
+            replay.message.reply_text(
+                'Извините, не нешел нужной информации для получения чека, распознанный текст: {}'.format(user_text))
+        return check_requested_text(fn, fd, fp, replay, bot)
 
 
 def main():
